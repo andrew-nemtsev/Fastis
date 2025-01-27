@@ -12,6 +12,24 @@ import UIKit
 /**
  Main controller of Fastis framework. Use it to create and present dade picker
 
+ Usage example:
+ ```swift
+ let fastisController = FastisController(mode: .range)
+ fastisController.title = "Choose range"
+ fastisController.maximumDate = Date()
+ fastisController.allowToChooseNilDate = true
+ fastisController.shortcuts = [.today, .lastWeek]
+ fastisController.dismissHandler = { [weak self] action in
+     switch action {
+     case .done(let newValue):
+        ...
+     case .cancel:
+        ...
+     }
+ }
+ fastisController.present(above: self)
+ ```
+
  **Single and range modes**
 
  If you want to get a single date you have to use `Date` type:
@@ -206,6 +224,16 @@ open class FastisController<Value: FastisValue>: UIViewController, JTACMonthView
     public var dismissHandler: ((DismissAction) -> Void)?
 
     /**
+     The block to execute after "Done" button will be tapped
+     */
+    @available(*, unavailable, message: "use dismissHandler: ((DismissAction) -> Void)?")
+    public var doneHandler: ((Value?) -> Void)? {
+        get { nil }
+        // swiftlint:disable:next unused_setter_value
+        set { }
+    }
+
+    /**
      And initial value which will be selected by default
 
      Default value — `"nil"`
@@ -321,16 +349,30 @@ open class FastisController<Value: FastisValue>: UIViewController, JTACMonthView
         self.view.addSubview(self.calendarView)
         if !self.shortcuts.isEmpty {
             self.view.addSubview(self.shortcutContainerView)
+            self.shortcutContainerView.backgroundColor = .white
         }
     }
 
     private func configureConstraints() {
         if !self.privateCloseOnSelectionImmediately {
-            NSLayoutConstraint.activate([
-                self.currentValueView.topAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.topAnchor),
-                self.currentValueView.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 12),
-                self.currentValueView.rightAnchor.constraint(equalTo: self.view.rightAnchor, constant: -12)
-            ])
+            if !self.shortcuts.isEmpty {
+               NSLayoutConstraint.activate([
+                   self.shortcutContainerView.topAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.topAnchor),
+                   self.shortcutContainerView.leftAnchor.constraint(equalTo: self.view.leftAnchor),
+                   self.shortcutContainerView.rightAnchor.constraint(equalTo: self.view.rightAnchor)
+               ])
+                NSLayoutConstraint.activate([
+                    self.currentValueView.topAnchor.constraint(equalTo: self.shortcutContainerView.bottomAnchor),
+                    self.currentValueView.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 12),
+                    self.currentValueView.rightAnchor.constraint(equalTo: self.view.rightAnchor, constant: -12)
+                ])
+            } else {
+                NSLayoutConstraint.activate([
+                    self.currentValueView.topAnchor.constraint(equalTo: self.view.safeAreaLayoutGuide.topAnchor),
+                    self.currentValueView.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 12),
+                    self.currentValueView.rightAnchor.constraint(equalTo: self.view.rightAnchor, constant: -12)
+                ])
+            }
             NSLayoutConstraint.activate([
                 self.weekView.topAnchor.constraint(equalTo: self.currentValueView.bottomAnchor),
                 self.weekView.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 12),
@@ -343,27 +385,33 @@ open class FastisController<Value: FastisValue>: UIViewController, JTACMonthView
                 self.weekView.rightAnchor.constraint(equalTo: self.view.rightAnchor, constant: -12)
             ])
         }
-        if !self.shortcuts.isEmpty {
+        /*
+         
+         if !self.shortcuts.isEmpty {
+             NSLayoutConstraint.activate([
+                 self.calendarView.bottomAnchor.constraint(equalTo: self.shortcutContainerView.topAnchor)
+             ])
+         } else {
+             NSLayoutConstraint.activate([
+                 self.calendarView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
+             ])
+         }
+         
+         if !self.shortcuts.isEmpty {
             NSLayoutConstraint.activate([
                 self.shortcutContainerView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor),
                 self.shortcutContainerView.leftAnchor.constraint(equalTo: self.view.leftAnchor),
                 self.shortcutContainerView.rightAnchor.constraint(equalTo: self.view.rightAnchor)
             ])
-        }
+        }*/
         NSLayoutConstraint.activate([
             self.calendarView.topAnchor.constraint(equalTo: self.weekView.bottomAnchor),
             self.calendarView.leftAnchor.constraint(equalTo: self.view.leftAnchor, constant: 16),
             self.calendarView.rightAnchor.constraint(equalTo: self.view.rightAnchor, constant: -16)
         ])
-        if !self.shortcuts.isEmpty {
-            NSLayoutConstraint.activate([
-                self.calendarView.bottomAnchor.constraint(equalTo: self.shortcutContainerView.topAnchor)
-            ])
-        } else {
-            NSLayoutConstraint.activate([
-                self.calendarView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
-            ])
-        }
+        NSLayoutConstraint.activate([
+            self.calendarView.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
+        ])
     }
 
     private func configureInitialState() {
